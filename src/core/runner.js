@@ -250,16 +250,20 @@ async function runner({ mode, db, onProgress = null }) {
     );
 
   } else {
-    // Single / sell / parse modes
-    const uniqueWallets = [3, 4, 5].includes(mode);
-    const allModules = db.getAllModules(uniqueWallets);
+    // Sell all / parse — read directly from keys file, no DB state needed
+    const fromFile = [3, 5].includes(mode);
+    const allModules = fromFile
+      ? db.getWalletsFromFile()
+      : db.getAllModules(false);
 
     if (allModules === 'No more accounts left') {
-      logger.warning('[!] No modules in database. Create database first.');
+      logger.warning(fromFile
+        ? '[!] No private keys found in file.'
+        : '[!] No modules in database. Create database first.');
       return 'Ended';
     }
 
-    logger.info(`[•] Running ${allModules.length} module(s)`);
+    logger.info(`[•] Running ${allModules.length} account(s)`);
     await Promise.all(
       allModules.map((moduleData) =>
         runModules({ mode, moduleData, sem, sleepHistory, addressLocks, db })

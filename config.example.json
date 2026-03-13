@@ -1,0 +1,107 @@
+{
+  "_comment": "Скопируй этот файл в config.json и заполни своими значениями. Все диапазоны — [мин, макс]. Время — в секундах.",
+
+  "general": {
+    "_comment": "shuffleWallets — перемешивать ли кошельки перед запуском. retry — кол-во попыток при ошибке. threads — кол-во параллельных потоков.",
+    "shuffleWallets": true,
+    "retry": 3,
+    "threads": 3
+  },
+
+  "tokens": {
+    "_comment": "Добавляй любые токены. prices — диапазон цены при которой торгуем. leverage — диапазон плеча. maxSpread — макс. допустимый спред в %. openPrice — смещение цены открытия от рыночной в $.",
+    "BTC": {
+      "prices": [50000, 110000],
+      "leverage": [2, 5],
+      "maxSpread": 0.01,
+      "openPrice": [3, 5]
+    },
+    "ETH": {
+      "prices": [2000, 4000],
+      "leverage": [2, 5],
+      "maxSpread": 0.01,
+      "openPrice": [1, 2]
+    },
+    "SOL": {
+      "prices": [50, 200],
+      "leverage": [2, 5],
+      "maxSpread": 0.01,
+      "openPrice": [0.1, 0.2]
+    }
+  },
+
+  "trading": {
+    "_comment_tradesCount": "Кол-во трейдов за один цикл [мин, макс]. Только для Single режима.",
+    "tradesCount": [2, 4],
+
+    "futureActions": {
+      "_comment": "sides — какие стороны разрешены. types.open/close — типы ордеров: limit, market.",
+      "sides": {
+        "Long": true,
+        "Short": true
+      },
+      "types": {
+        "open": ["limit", "market"],
+        "close": ["limit", "market"]
+      }
+    },
+
+    "tradeAmounts": {
+      "_comment": "amount — размер сделки в USDC [мин, макс]. percent — процент баланса [мин, макс]. deltaDiff — разница в размерах позиций для Delta Neutral [мин, макс]. cancelAllBefore — закрывать ли все позиции перед началом.",
+      "amount": [20, 50],
+      "percent": [70, 90],
+      "deltaDiff": [0.05, 0.15],
+      "cancelAllBefore": true
+    },
+
+    "futuresLimits": {
+      "_comment": "priceDiffAmount — смещение цены лимит-ордера в $ [мин, макс]. priceDiffPercent — смещение в % [мин, макс]. toWait — минут ждать исполнения лимита. orderType — тип ордера для Delta Neutral: limit или market.",
+      "priceDiffAmount": [0, 0],
+      "priceDiffPercent": [0.03, 0.045],
+      "toWait": 1,
+      "orderType": "limit"
+    },
+
+    "stopLoss": {
+      "_comment": "enable — включить стоп-лосс. lossDiffAmount — отступ SL в $ [мин, макс]. lossDiffPercent — отступ SL в % [мин, макс].",
+      "enable": true,
+      "lossDiffAmount": [0, 0],
+      "lossDiffPercent": [0.03, 0.045]
+    },
+
+    "sellSettings": {
+      "_comment": "cancelOrders — отменять pending ордера при закрытии. closePositions — закрывать открытые позиции.",
+      "cancelOrders": true,
+      "closePositions": true
+    },
+
+    "pairSettings": {
+      "_comment": "pairAmount — кол-во кошельков в группе [мин, макс]. positionHold — сколько секунд держать позицию перед закрытием [мин, макс].",
+      "pairAmount": [2, 2],
+      "positionHold": [200, 300]
+    }
+  },
+
+  "sleep": {
+    "_comment": "Все значения в секундах [мин, макс].",
+    "betweenOrders": [5, 10],
+    "betweenThreads": [100, 200],
+    "afterAccount": [30, 40],
+    "betweenOpenOrders": [2, 8],
+    "betweenCloseOrders": [2, 8],
+    "afterSellAll": [5, 10]
+  },
+
+  "telegram": {
+    "_comment": "botToken — токен от @BotFather. userIds — список Telegram ID для уведомлений (узнать через @userinfobot).",
+    "botToken": "ВАШ_ТОКЕН_БОТА",
+    "userIds": [123456789]
+  },
+
+  "paths": {
+    "_comment": "Пути к файлам относительно корня проекта. Обычно менять не нужно.",
+    "privatekeysFile": "user_data/privatekeys/privatekeys.txt",
+    "proxiesFile": "user_data/proxies/proxies.txt",
+    "databasesDir": "databases"
+  }
+}

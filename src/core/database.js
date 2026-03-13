@@ -392,6 +392,54 @@ class DataBase {
 
   // ── Read modules/groups ──────────────────────────────────────────────────────
 
+  /** Load all wallets directly from privatekeys + proxies files (no DB needed) */
+  getWalletsFromFile() {
+    const cfg = settings.get();
+    const pkFile = settings.resolvePath(cfg.paths.privatekeysFile);
+    const proxyFile = settings.resolvePath(cfg.paths.proxiesFile);
+
+    const rawKeys = fs.readFileSync(pkFile, 'utf-8').split('\n').map((l) => l.trim()).filter(Boolean);
+    let rawProxies = fs.existsSync(proxyFile)
+      ? fs.readFileSync(proxyFile, 'utf-8').split('\n').map((l) => l.trim()).filter(Boolean)
+      : [];
+
+    const badProxies = ['http://login:password@ip:port', '#'];
+    rawProxies = rawProxies.filter((p) => p && !badProxies.some((b) => p.startsWith(b)));
+
+    const result = [];
+    let pkIndex = 0;
+
+    for (const raw of rawKeys) {
+      if (raw.startsWith('#')) continue;
+      const parts = raw.split(':');
+      let pk, label;
+      if (parts.length === 2) {
+        label = parts[0];
+        pk = parts[1];
+      } else {
+        pk = parts[0];
+        const address = getAddress(pk);
+        label = `${address.slice(0, 6)}...${address.slice(-4)}`;
+      }
+
+      const address = getAddress(pk);
+      const proxy = rawProxies.length ? rawProxies[pkIndex % rawProxies.length] : null;
+      const encoded = this.encodePk(pk);
+
+      result.push({
+        privatekey: pk,
+        encoded_privatekey: encoded,
+        proxy,
+        address,
+        label,
+        module_info: { status: 'to_run' },
+      });
+      pkIndex++;
+    }
+
+    return result.length ? result : 'No more accounts left';
+  }
+
   getAllModules(uniqueWallets = false) {
     const db = this._readDb(this.modulesDbPath);
 
