@@ -23,6 +23,7 @@ class PairAccounts {
 
   async run() {
     await Promise.all(this.accounts.map((acc) => acc.loginAccount()));
+    this.log('Все аккаунты вошли — загружаем токены и открываем позиции...');
     await this.openAndClosePosition();
     return true;
   }
@@ -167,7 +168,7 @@ class PairAccounts {
     // Hold period + liquidation watch
     const holdSec = randint(...cfg.trading.pairSettings.positionHold);
     this.log(`Sleeping ${holdSec}s before closing positions...`);
-    const liquidatedAcc = await this._waitForLiquidation(tokenName, holdSec);
+    const liquidatedAcc = await this._waitForLiquidation(tokenName, holdSec, this.groupNumber);
 
     if (liquidatedAcc) {
       for (const acc of this._randomized(this.accounts)) await acc.sellAll();
@@ -220,9 +221,10 @@ class PairAccounts {
       );
     }
 
+    let closeResults;
     let closedPositions;
     try {
-      const closeResults = await Promise.all(closeTasks);
+      closeResults = await Promise.all(closeTasks);
       closedPositions = [...closeResults];
       if (limitCloseData) closedPositions.push(limitCloseData);
     } catch (err) {
@@ -261,10 +263,22 @@ class PairAccounts {
       '+', 'INFO'
     );
 
-    await this.accounts.at(-1).wallet.db.appendReport(
-      this.accounts.at(-1).encodedPkey,
-      `\n💰 <b>profit ${totalProfit}$</b>\n💵 <b>volume ${totalVolume}$</b>\n💍 <b>100k$ volume cost: ${costPer100k}$</b>`,
-    );
+    // TG close notification
+    const allCloseData = [
+      ...randomizedMarket.map((acc, i) => ({ acc, pos: closeResults[i], av: openValues[acc.wallet.address] })),
+      ...(limitAccount && limitCloseData ? [{ acc: limitAccount, pos: limitCloseData, av: openValues[limitAccount.wallet.address] }] : []),
+    ];
+    const profitEmoji = totalProfit >= 0 ? '💰' : '📉';
+    const tgCloseLines = [`📁 <b>${this.groupNumber} | Позиции закрыты</b>`, `🪙 ${tokenName}\n`];
+    for (const { acc, pos, av } of allCloseData) {
+      const price = parseFloat(pos.price);
+      const qty = parseFloat(pos.qty);
+      const usd = roundCut(qty * price, 2);
+      const emoji = av.side === 'Long' ? '🟢' : '🔴';
+      tgCloseLines.push(`${emoji} ${av.side} | <code>${acc.wallet.address}</code>\n   ${qty} ${tokenName} (${usd}$) @ ${price}`);
+    }
+    tgCloseLines.push(`\n${profitEmoji} Profit: ${totalProfit}$ | 💵 Volume: ${totalVolume}$ | 💍 100k$: ${costPer100k}$`);
+    await new TgReport().sendLog(tgCloseLines.join('\n'));
 
     await this._printBalances();
     return true;
@@ -272,14 +286,24 @@ class PairAccounts {
 
   // ── Liquidation watch ─────────────────────────────────────────────────────────
 
-  async _waitForLiquidation(tokenName, toSleep, checkInterval = 10) {
+  async _waitForLiquidation(tokenName, toSleep, label = null, checkInterval = 10) {
     let slept = 0;
     const startedTs = Date.now();
+    let lastCountdown = 0;
+    const countdownEvery = 30 * 1000; // log remaining every 30s
 
     while (slept < toSleep * 1000) {
       const waitMs = Math.min(checkInterval * 1000, toSleep * 1000 - slept);
-      await asyncSleep(waitMs / 1000);
+      await asyncSleep(waitMs / 1000); // silent (< 15s threshold)
       slept += waitMs;
+      lastCountdown += waitMs;
+
+      const remaining = Math.ceil((toSleep * 1000 - slept) / 1000);
+      if (remaining > 0 && lastCountdown >= countdownEvery) {
+        const prefix = label ? `${label} | ` : '';
+        logger.debug(`${prefix}Закрытие позиций через ${remaining}s...`);
+        lastCountdown = 0;
+      }
 
       const liquidations = await Promise.all(
         this.accounts.map((acc) => acc.browser.getTrades(tokenName, {}, true))

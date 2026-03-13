@@ -108,7 +108,7 @@ class Variational {
         return;
 
       } catch (err) {
-        if (err instanceof CustomError) throw err;
+        if (err instanceof CustomError || err.name === 'StopError') throw err;
         attempt++;
         this.log(`Login attempt ${attempt}/${maxRetries} failed: ${err.message}`, '-', 'ERROR');
         if (attempt >= maxRetries) throw err;
@@ -128,12 +128,24 @@ class Variational {
   async _doParse() {
     if (PARSED_FLAG) return;
 
-    this.log('Loading supported assets from API...');
+    const cfg = settings.get();
+    const configTokens = Object.keys(cfg.tokens);
+    this.log(`Loading ${configTokens.length} token configuration(s)...`);
+
     const supported = await this.browser.getSupportedAssets();
 
-    for (const [asset, assetData] of Object.entries(supported)) {
+    for (const asset of configTokens) {
       if (hasToken(asset)) continue;
-      if (assetData[0].is_close_only_mode || !assetData[0].has_perp) continue;
+
+      const assetData = supported[asset];
+      if (!assetData) {
+        this.log(`Token ${asset} not found in supported assets`, '!', 'WARNING');
+        continue;
+      }
+      if (assetData[0].is_close_only_mode || !assetData[0].has_perp) {
+        this.log(`Token ${asset} is not tradeable on this platform`, '!', 'WARNING');
+        continue;
+      }
 
       try {
         const indicative = await this.browser.getIndicative(asset, { price: assetData[0].price });
@@ -148,12 +160,13 @@ class Variational {
           ),
         });
       } catch (e) {
+        if (e.name === 'StopError') throw e;
         this.log(`Could not load token data for ${asset}: ${e.message}`, '!', 'WARNING');
       }
     }
 
     PARSED_FLAG = true;
-    this.log(`Loaded ${Object.keys(getAllTokens()).length} token configurations`, '+', 'SUCCESS');
+    this.log(`Loaded ${configTokens.length} token(s): ${configTokens.join(', ')}`, '+', 'SUCCESS');
   }
 
   // ── Price helpers ─────────────────────────────────────────────────────────────
@@ -301,10 +314,12 @@ class Variational {
           Math.abs(parseFloat(a.position_info.qty)) * parseFloat(a.position_info.avg_entry_price)
       );
 
-      for (const pos of sorted) {
+      for (let i = 0; i < sorted.length; i++) {
+        const pos = sorted[i];
         const tName = pos.position_info.instrument.underlying;
         const qty = parseFloat(pos.position_info.qty);
         const closeSide = qty > 0 ? 'sell' : 'buy';
+        if (i > 0) await asyncSleep(randint(...cfg.sleep.betweenCloseOrders));
         await this.createOrder({
           tokenName: tName,
           orderSide: closeSide,
@@ -346,6 +361,7 @@ class Variational {
         });
       } catch (err) {
         if (err instanceof CustomError || err instanceof OnetimeError) throw err;
+        if (err.name === 'StopError') throw err;
         attempt++;
         this.log(`Order error attempt ${attempt}/${maxRetries}: ${err.message}`, '-', 'ERROR');
         if (attempt >= maxRetries) throw err;

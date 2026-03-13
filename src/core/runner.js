@@ -111,6 +111,7 @@ function initializeAccount(moduleData, db, groupData = null) {
 }
 
 async function threadSleep(label, sleepHistory, threads, betweenThreads) {
+  stopSignal.check();
   if (sleepHistory.length < threads) {
     if (sleepHistory.length === 0) {
       sleepHistory.push(0);
@@ -176,17 +177,14 @@ async function runModules({ mode, moduleData, sem, sleepHistory, addressLocks, d
   }
 }
 
-async function runPair({ mode, groupData, sem, sleepHistory, db }) {
+async function runPair({ mode, groupData, sem, sleepHistory, addressLocks, db }) {
   const cfg = settings.get();
   const addresses = groupData.wallets_data.map((w) => w.address);
-  const multiLock = new MultiLock(new Map(), addresses);
+  const multiLock = new MultiLock(addressLocks, addresses);
 
   await multiLock.run(async () => {
     await sem.run(async () => {
-      await threadSleep(
-        `Group ${groupData.group_number}`, sleepHistory,
-        cfg.general.threads, cfg.sleep.betweenThreads
-      );
+      await threadSleep(`Group ${groupData.group_number}`, sleepHistory, cfg.general.threads, cfg.sleep.betweenThreads);
 
       let variationalAccounts = [];
       try {
@@ -215,7 +213,9 @@ async function runPair({ mode, groupData, sem, sleepHistory, db }) {
         if (reports) await new TgReport().sendLog(reports);
 
         if (groupData.module_info.status === true) {
-          await asyncSleep(randint(...cfg.sleep.afterAccount));
+          const toSleep = randint(...cfg.sleep.afterAccount);
+          logger.debug(`[•] <white>Group ${groupData.group_number}</white> | Sleep ${toSleep}s`);
+          await asyncSleep(toSleep);
         } else {
           await asyncSleep(10);
         }
@@ -245,7 +245,7 @@ async function runner({ mode, db, onProgress = null }) {
     logger.info(`[•] Running ${allGroups.length} group(s) in delta neutral mode`);
     await Promise.all(
       allGroups.map((groupData) =>
-        runPair({ mode, groupData, sem, sleepHistory, db })
+        runPair({ mode, groupData, sem, sleepHistory, addressLocks, db })
       )
     );
 

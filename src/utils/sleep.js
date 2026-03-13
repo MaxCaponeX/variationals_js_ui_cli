@@ -29,8 +29,8 @@ async function asyncSleep(seconds, label = null) {
   stopSignal.check();
   const prefix = label ? `${label} | ` : '';
 
-  // Skip log for short sleeps (polling, retries)
-  if (seconds >= 5) {
+  // Skip log for short sleeps (polling intervals, retries)
+  if (seconds >= 15) {
     logger.debug(`${prefix}Sleeping ${seconds}s...`);
   }
 
