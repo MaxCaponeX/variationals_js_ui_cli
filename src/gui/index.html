@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'">
+  <title>Variational Bot</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1>Variational Bot</h1>
+      <span>omni.variational.io</span>
+    </div>
+    <ul class="nav">
+      <li class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">📊</span> Главная
+      </li>
+      <li class="nav-item" data-page="tokens">
+        <span class="nav-icon">🪙</span> Токены
+      </li>
+      <li class="nav-item" data-page="settings">
+        <span class="nav-icon">⚙️</span> Настройки
+      </li>
+      <li class="nav-item" data-page="logs">
+        <span class="nav-icon">📋</span> Логи
+      </li>
+    </ul>
+  </aside>
+
+  <!-- ── Main content ────────────────────────────────────────────────────── -->
+  <main class="content">
+
+    <!-- ── Dashboard ─────────────────────────────────────────────────────── -->
+    <section class="page active" id="page-dashboard">
+      <h2>Главная</h2>
+
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-label">Статус</div>
+          <div id="status-badge"><span class="badge badge-idle">Ожидание</span></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">База данных</div>
+          <div class="stat-value" id="db-info">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">В очереди</div>
+          <div class="stat-value" id="db-pending">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Потоки</div>
+          <div class="stat-value" id="info-threads">—</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">База данных</div>
+        <div class="btn-group">
+          <button class="btn btn-secondary" id="btn-create-single">Создать Single БД</button>
+          <button class="btn btn-secondary" id="btn-create-delta">Создать Delta Neutral БД</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Быстрый запуск</div>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btn-run-single">▶ Запустить Single</button>
+          <button class="btn btn-primary" id="btn-run-delta">▶ Запустить Delta Neutral</button>
+          <button class="btn btn-secondary" id="btn-run-sell">Закрыть все позиции</button>
+          <button class="btn btn-secondary" id="btn-run-parse">Парсинг статистики</button>
+          <button class="btn btn-danger" id="btn-stop" disabled>■ Стоп</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Последние логи</div>
+        <div class="log-console" id="dash-log" style="height:200px"></div>
+      </div>
+    </section>
+
+    <!-- ── Tokens ─────────────────────────────────────────────────────────── -->
+    <section class="page" id="page-tokens">
+      <h2>Токены для торговли</h2>
+      <p style="color:var(--text-muted);font-size:13px">Выберите токены и настройте диапазоны цен и плеча.</p>
+
+      <div class="card">
+        <div class="card-title">Конфигурация токенов</div>
+        <div class="token-table-wrap">
+          <table class="token-table">
+            <thead>
+              <tr>
+                <th>Токен</th>
+                <th>Цена входа, $</th>
+                <th>Плечо, x</th>
+                <th>Макс. спред, %</th>
+                <th>Смещение цены, $</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="token-list"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px">
+          <input type="text" id="new-token-name" placeholder="Символ токена" style="width:120px;text-transform:uppercase">
+          <button class="btn btn-secondary" id="btn-add-token" style="margin-left:8px">+ Добавить токен</button>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-primary" id="btn-save-tokens">💾 Сохранить токены</button>
+      </div>
+    </section>
+
+    <!-- ── Settings (Single + Delta + General) ───────────────────────────── -->
+    <section class="page" id="page-settings">
+      <h2>Настройки</h2>
+
+      <!-- Sub-tabs -->
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="tab-single">🎯 Single</button>
+        <button class="settings-tab" data-tab="tab-delta">⚖️ Delta Neutral</button>
+        <button class="settings-tab" data-tab="tab-general">⚙️ Общие</button>
+      </div>
+
+      <!-- ── Single Mode ─────────────────────────────────────────────────── -->
+      <div class="settings-tab-panel active" id="tab-single">
+
+        <div class="card">
+          <div class="card-title">Размер сделки</div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Сумма в USD
+                <span class="tooltip-icon" data-tip="Размер сделки в USDC. Установите оба значения в 0, чтобы использовать режим процента от баланса.">?</span>
+              </span>
+            </label>
+            <div class="range-input">
+              <input type="number" id="s-amount-min" step="0.5" min="0" placeholder="мин">
+              <span class="range-sep">–</span>
+              <input type="number" id="s-amount-max" step="0.5" min="0" placeholder="макс">
+            </div>
+            <span style="font-size:12px;color:var(--text-muted)">$ (0,0 = использовать %)</span>
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Процент от баланса
+                <span class="tooltip-icon" data-tip="Использовать этот процент от баланса аккаунта на каждую сделку. Активен только когда сумма в USD равна [0, 0].">?</span>
+              </span>
+            </label>
+            <div class="range-input">
+              <input type="number" id="s-pct-min" step="1" min="1" max="100" placeholder="мин">
+              <span class="range-sep">–</span>
+              <input type="number" id="s-pct-max" step="1" min="1" max="100" placeholder="макс">
+            </div>
+            <span style="font-size:12px;color:var(--text-muted)">%</span>
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Отменить всё перед стартом
+                <span class="tooltip-icon" data-tip="Отменить все открытые ордера и закрыть все позиции перед размещением новых.">?</span>
+              </span>
+            </label>
+            <input type="checkbox" id="s-cancel-all">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Количество сделок и направления</div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Раундов на аккаунт
+                <span class="tooltip-icon" data-tip="Сколько циклов открытие+закрытие выполнить на каждый аккаунт.">?</span>
+              </span>
+            </label>
+            <div class="range-input">
+              <input type="number" id="s-trades-min" step="1" min="1">
+              <span class="range-sep">–</span>
+              <input type="number" id="s-trades-max" step="1" min="1">
+            </div>
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Разрешить Long
+                <span class="tooltip-icon" data-tip="Разрешить боту открывать Long (покупка) позиции.">?</span>
+              </span>
+            </label>
+            <input type="checkbox" id="s-allow-long">
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Разрешить Short
+                <span class="tooltip-icon" data-tip="Разрешить боту открывать Short (продажа) позиции.">?</span>
+              </span>
+            </label>
+            <input type="checkbox" id="s-allow-short">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Типы ордеров</div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">При открытии позиции
+                <span class="tooltip-icon" data-tip="Типы ордеров при открытии позиции.">?</span>
+              </span>
+            </label>
+            <label style="flex:0;margin-right:12px"><input type="checkbox" id="s-open-limit"> Лимитный</label>
+            <label style="flex:0"><input type="checkbox" id="s-open-market"> Рыночный</label>
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">При закрытии позиции
+                <span class="tooltip-icon" data-tip="Типы ордеров при закрытии позиции.">?</span>
+              </span>
+            </label>
+            <label style="flex:0;margin-right:12px"><input type="checkbox" id="s-close-limit"> Лимитный</label>
+            <label style="flex:0"><input type="checkbox" id="s-close-market"> Рыночный</label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Лимитные ордера и стоп-лосс</div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Отступ цены закрытия (%)
+                <span class="tooltip-icon" data-tip="На сколько процентов выше (long) или ниже (short) цены входа разместить лимитный ордер на закрытие.">?</span>
+              </span>
+            </label>
+            <div class="range-input">
+              <input type="number" id="s-close-diff-min" step="0.001">
+              <span class="range-sep">–</span>
+              <input type="number" id="s-close-diff-max" step="0.001">
+            </div>
+            <span style="font-size:12px;color:var(--text-muted)">%</span>
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Ожидание исполнения
+                <span class="tooltip-icon" data-tip="Сколько минут ждать исполнения лимитного ордера перед тем, как сдвинуть цену и повторить.">?</span>
+              </span>
+            </label>
+            <input type="number" id="s-wait-fill" step="0.5" min="0">
+            <span style="font-size:12px;color:var(--text-muted)">мин</span>
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Включить стоп-лосс
+                <span class="tooltip-icon" data-tip="Устанавливать стоп-лосс при открытии позиций. Работает только когда тип закрытия — только лимит.">?</span>
+              </span>
+            </label>
+            <input type="checkbox" id="s-sl-enable">
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Расстояние SL от входа (%)
+                <span class="tooltip-icon" data-tip="На сколько процентов ниже (long) или выше (short) цены входа установить стоп-лосс.">?</span>
+              </span>
+            </label>
+            <div class="range-input">
+              <input type="number" id="s-sl-min" step="0.001">
+              <span class="range-sep">–</span>
+              <input type="number" id="s-sl-max" step="0.001">
+            </div>
+            <span style="font-size:12px;color:var(--text-muted)">%</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Настройки закрытия</div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Отменять открытые ордера
+                <span class="tooltip-icon" data-tip="Отменять все незаполненные лимитные ордера при закрытии позиций.">?</span>
+              </span>
+            </label>
+            <input type="checkbox" id="s-sell-cancel">
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Закрывать активные позиции
+                <span class="tooltip-icon" data-tip="Закрывать все активные позиции по рыночной цене.">?</span>
+              </span>
+            </label>
+            <input type="checkbox" id="s-sell-close">
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btn-save-single">💾 Сохранить Single</button>
+        </div>
+      </div>
+
+      <!-- ── Delta Neutral ───────────────────────────────────────────────── -->
+      <div class="settings-tab-panel" id="tab-delta">
+
+        <div class="card">
+          <div class="card-title">Настройки группы</div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Аккаунтов в группе
+                <span class="tooltip-icon" data-tip="Минимальное и максимальное количество аккаунтов в каждой delta-neutral группе. Минимум — 2.">?</span>
+              </span>
+            </label>
+            <div class="range-input">
+              <input type="number" id="d-pair-min" step="1" min="2">
+              <span class="range-sep">–</span>
+              <input type="number" id="d-pair-max" step="1" min="2">
+            </div>
+            <span style="font-size:12px;color:var(--text-muted)">аккаунтов</span>
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Время удержания позиции
+                <span class="tooltip-icon" data-tip="Сколько секунд держать позиции открытыми перед закрытием. В это время отслеживаются ликвидации.">?</span>
+              </span>
+            </label>
+            <div class="range-input">
+              <input type="number" id="d-hold-min" step="5" min="5">
+              <span class="range-sep">–</span>
+              <input type="number" id="d-hold-max" step="5" min="5">
+            </div>
+            <span style="font-size:12px;color:var(--text-muted)">секунд</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Тип ордера и рандомизация</div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Тип ордера
+                <span class="tooltip-icon" data-tip="'limit': аккаунт с наибольшей суммой открывает лимитный ордер, остальные ждут его исполнения, затем открывают по рынку. 'market': все используют рыночные ордера.">?</span>
+              </span>
+            </label>
+            <select id="d-order-type">
+              <option value="limit">limit (рекомендуется)</option>
+              <option value="market">market</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Разброс размера позиции (%)
+                <span class="tooltip-icon" data-tip="Случайно варьировать размер каждой позиции на этот процент, чтобы избежать идентичных чисел. Установите оба в 0 для отключения.">?</span>
+              </span>
+            </label>
+            <div class="range-input">
+              <input type="number" id="d-diff-min" step="0.01" min="0">
+              <span class="range-sep">–</span>
+              <input type="number" id="d-diff-max" step="0.01" min="0">
+            </div>
+            <span style="font-size:12px;color:var(--text-muted)">%</span>
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btn-save-delta">💾 Сохранить Delta</button>
+        </div>
+      </div>
+
+      <!-- ── General ─────────────────────────────────────────────────────── -->
+      <div class="settings-tab-panel" id="tab-general">
+
+        <div class="card">
+          <div class="card-title">Основное</div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Потоки (параллельность)
+                <span class="tooltip-icon" data-tip="Сколько аккаунтов работает одновременно.">?</span>
+              </span>
+            </label>
+            <input type="number" id="g-threads" min="1" max="50" step="1">
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Повторных попыток
+                <span class="tooltip-icon" data-tip="Сколько раз повторять неудачные API-запросы перед тем, как прекратить попытки.">?</span>
+              </span>
+            </label>
+            <input type="number" id="g-retry" min="1" max="20" step="1">
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Перемешивать кошельки
+                <span class="tooltip-icon" data-tip="Обрабатывать кошельки в случайном порядке при каждом запуске.">?</span>
+              </span>
+            </label>
+            <input type="checkbox" id="g-shuffle">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Задержки (секунды)</div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Между ордерами
+                <span class="tooltip-icon" data-tip="Пауза между открытием и закрытием позиции в Single режиме.">?</span>
+              </span>
+            </label>
+            <div class="range-input">
+              <input type="number" id="sl-orders-min" step="1" min="0">
+              <span class="range-sep">–</span>
+              <input type="number" id="sl-orders-max" step="1" min="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Между потоками (старт)
+                <span class="tooltip-icon" data-tip="Ступенчатая задержка между запусками потоков.">?</span>
+              </span>
+            </label>
+            <div class="range-input">
+              <input type="number" id="sl-threads-min" step="1" min="0">
+              <span class="range-sep">–</span>
+              <input type="number" id="sl-threads-max" step="1" min="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">После каждого аккаунта
+                <span class="tooltip-icon" data-tip="Пауза после завершения всех задач для одного аккаунта.">?</span>
+              </span>
+            </label>
+            <div class="range-input">
+              <input type="number" id="sl-account-min" step="1" min="0">
+              <span class="range-sep">–</span>
+              <input type="number" id="sl-account-max" step="1" min="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Между открытием ордеров (delta)
+                <span class="tooltip-icon" data-tip="Ступенчатая задержка между каждым рыночным ордером на открытие в Delta Neutral режиме.">?</span>
+              </span>
+            </label>
+            <div class="range-input">
+              <input type="number" id="sl-open-min" step="1" min="0">
+              <span class="range-sep">–</span>
+              <input type="number" id="sl-open-max" step="1" min="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Между закрытием ордеров (delta)
+                <span class="tooltip-icon" data-tip="Ступенчатая задержка между каждым рыночным ордером на закрытие в Delta Neutral режиме.">?</span>
+              </span>
+            </label>
+            <div class="range-input">
+              <input type="number" id="sl-close-min" step="1" min="0">
+              <span class="range-sep">–</span>
+              <input type="number" id="sl-close-max" step="1" min="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">После закрытия всех позиций
+                <span class="tooltip-icon" data-tip="Пауза после закрытия всех позиций (cancel_all_before) перед открытием новых.">?</span>
+              </span>
+            </label>
+            <div class="range-input">
+              <input type="number" id="sl-sellall-min" step="1" min="0">
+              <span class="range-sep">–</span>
+              <input type="number" id="sl-sellall-max" step="1" min="0">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Уведомления Telegram</div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Токен бота
+                <span class="tooltip-icon" data-tip="Токен Telegram-бота (формат: 123456:AbCdEf...). Оставьте пустым для отключения уведомлений.">?</span>
+              </span>
+            </label>
+            <input type="text" id="tg-token" placeholder="123456:AbCdEf..." style="width:220px">
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">ID пользователей
+                <span class="tooltip-icon" data-tip="ID пользователей Telegram через запятую (например: 12345678, 87654321).">?</span>
+              </span>
+            </label>
+            <input type="text" id="tg-ids" placeholder="12345678, 87654321" style="width:220px">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Пути к файлам</div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Файл приватных ключей
+                <span class="tooltip-icon" data-tip="Путь к файлу с приватными ключами (по одному на строку).">?</span>
+              </span>
+            </label>
+            <input type="text" id="path-pk" style="width:280px" placeholder="user_data/privatekeys/privatekeys.txt">
+          </div>
+          <div class="form-row">
+            <label>
+              <span class="tooltip-wrap">Файл прокси
+                <span class="tooltip-icon" data-tip="Путь к файлу с прокси-адресами (по одному на строку). Оставьте пустым для работы без прокси.">?</span>
+              </span>
+            </label>
+            <input type="text" id="path-proxy" style="width:280px" placeholder="user_data/proxies/proxies.txt">
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btn-save-settings">💾 Сохранить все настройки</button>
+          <button class="btn btn-secondary" id="btn-reload-settings">↺ Перезагрузить из файла</button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── Logs ───────────────────────────────────────────────────────────── -->
+    <section class="page" id="page-logs">
+      <h2>Полные логи</h2>
+      <div class="btn-group">
+        <button class="btn btn-secondary" id="btn-clear-logs">🗑 Очистить логи</button>
+        <label style="flex:0">
+          <input type="checkbox" id="log-autoscroll" checked> Автопрокрутка
+        </label>
+      </div>
+      <div class="log-console" id="full-log" style="height:580px"></div>
+    </section>
+
+  </main>
+</div>
+
+<script src="renderer.js"></script>
+<script>
+  // Sub-tab switching within Settings page
+  document.querySelectorAll('.settings-tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.settings-tab').forEach((t) => t.classList.remove('active'));
+      document.querySelectorAll('.settings-tab-panel').forEach((p) => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.tab)?.classList.add('active');
+    });
+  });
+</script>
+</body>
+</html>

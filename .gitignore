@@ -1,0 +1,24 @@
+# Приватные данные — никогда не коммитить
+user_data/privatekeys/
+user_data/proxies/
+
+# Базы данных
+databases/
+
+# Зависимости
+node_modules/
+
+# Логи
+logs/
+*.log
+
+# Переменные окружения
+.env
+.env.*
+
+# Системные файлы macOS
+.DS_Store
+
+# Electron build output
+dist/
+out/
