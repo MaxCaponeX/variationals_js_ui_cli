@@ -306,6 +306,8 @@ class Variational {
       }
     }
 
+    const closedItems = [];
+
     if (cfg.trading.sellSettings.closePositions) {
       const positions = await this.browser.getPositions();
       const sorted = [...positions].sort(
@@ -318,15 +320,17 @@ class Variational {
         const pos = sorted[i];
         const tName = pos.position_info.instrument.underlying;
         const qty = parseFloat(pos.position_info.qty);
+        const originalSide = qty > 0 ? 'Long' : 'Short';
         const closeSide = qty > 0 ? 'sell' : 'buy';
         if (i > 0) await asyncSleep(randint(...cfg.sleep.betweenCloseOrders));
-        await this.createOrder({
+        const result = await this.createOrder({
           tokenName: tName,
           orderSide: closeSide,
           orderType: 'market',
           tokenAmount: Math.abs(qty),
           previousPos: pos,
         });
+        closedItems.push({ tokenName: tName, side: originalSide, result });
         soldAny = true;
       }
     }
@@ -339,6 +343,22 @@ class Variational {
         true,
       );
     }
+
+    if (!silent && closedItems.length > 0) {
+      const tgLines = [
+        `🚫 <b>${this.label} | Позиции закрыты</b>`,
+        `<code>${this.wallet.address}</code>\n`,
+      ];
+      for (const { tokenName, side, result } of closedItems) {
+        const emoji = side === 'Long' ? '🟢' : '🔴';
+        const price = parseFloat(result.price);
+        const qty = parseFloat(result.qty);
+        const usd = roundCut(qty * price, 2);
+        tgLines.push(`${emoji} ${side} | ${tokenName}\n   ${qty} ${tokenName} (${usd}$) @ ${price}`);
+      }
+      await new TgReport().sendLog(tgLines.join('\n'));
+    }
+
     return soldAny;
   }
 
@@ -591,19 +611,11 @@ class Variational {
         const rank = rawPoints ? rawPoints.rank : 0;
         const totalPositions = orders.length + positions.length;
 
-        this.log(
-          `Account stats:\n` +
-          `  Points:    ${totalPoints}\n` +
-          `  Rank:      ${rank}\n` +
-          `  Volume:    ${volume}$\n` +
-          `  Positions: ${totalPositions}\n` +
-          `  Balance:   ${balance}$\n` +
-          `  Net Worth: ${netWorth}$\n` +
-          `  PNL:       ${pnl}$`,
-          '+', 'SUCCESS'
-        );
+        this.log(`Points: ${totalPoints} | Rank: ${rank} | Volume: ${volume}$ | Positions: ${totalPositions} | Balance: ${balance}$ | Net Worth: ${netWorth}$ | PNL: ${pnl}$`, '+', 'SUCCESS');
 
         const tgLog =
+          `📊 <b>${this.label} | Статистика</b>\n` +
+          `<code>${this.wallet.address}</code>\n\n` +
           `🎖 Points: <b>${totalPoints}</b>\n` +
           `💎 Rank: <b>${rank}</b>\n` +
           `📈 Volume: <b>${volume}$</b>\n` +

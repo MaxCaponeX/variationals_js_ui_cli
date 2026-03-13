@@ -137,7 +137,9 @@ async function runModules({ mode, moduleData, sem, sleepHistory, addressLocks, d
   const release = await addrLock.acquire();
   try {
     await sem.run(async () => {
-      await threadSleep(moduleData.label, sleepHistory, cfg.general.threads, cfg.sleep.betweenThreads);
+      if (![3, 5].includes(mode)) {
+        await threadSleep(moduleData.label, sleepHistory, cfg.general.threads, cfg.sleep.betweenThreads);
+      }
 
       let variational = null;
       try {

@@ -128,9 +128,9 @@ class DataBase {
     }
 
     const amounts = this._getAmounts();
-    if (amounts.groupsAmount !== undefined) {
+    if (amounts.groupsAmount !== undefined && amounts.groupsAmount > 0) {
       logger.info(`Loaded ${amounts.groupsAmount} groups`);
-    } else {
+    } else if (amounts.modulesAmount !== undefined && amounts.modulesAmount > 0) {
       logger.info(`Loaded ${amounts.modulesAmount} modules for ${amounts.accsAmount} accounts`);
     }
   }
