@@ -398,8 +398,102 @@ $('btn-reload-settings').addEventListener('click', async () => {
   alert('Настройки перезагружены из файла.');
 });
 
+// ── Accounts page ─────────────────────────────────────────────────────────────
+
+function renderKeyList(lines) {
+  const list = $('key-list');
+  list.innerHTML = '';
+  lines.forEach((key) => {
+    const row = document.createElement('div');
+    row.className = 'key-row';
+    const input = document.createElement('input');
+    input.type = 'password';
+    input.className = 'key-input';
+    input.value = key;
+    input.readOnly = true;
+    input.autocomplete = 'off';
+
+    const eyeBtn = document.createElement('button');
+    eyeBtn.className = 'btn-eye';
+    eyeBtn.title = 'Показать / скрыть';
+    eyeBtn.textContent = '👁';
+    eyeBtn.addEventListener('click', () => {
+      input.type = input.type === 'password' ? 'text' : 'password';
+    });
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-remove';
+    delBtn.title = 'Удалить';
+    delBtn.textContent = '✕';
+    delBtn.addEventListener('click', () => row.remove());
+
+    row.append(input, eyeBtn, delBtn);
+    list.appendChild(row);
+  });
+  updateKeysCount();
+}
+
+function updateKeysCount() {
+  const n = $('key-list').querySelectorAll('.key-row').length;
+  $('keys-count').textContent = n ? `${n} ключей` : 'нет ключей';
+}
+
+function collectKeys() {
+  return [...$('key-list').querySelectorAll('.key-input')].map((i) => i.value.trim()).filter(Boolean);
+}
+
+async function loadKeys() {
+  const path = config.paths?.privatekeysFile || 'user_data/privatekeys/privatekeys.txt';
+  const res = await window.api.readLinesFile(path);
+  renderKeyList(res.ok ? res.lines : []);
+}
+
+async function loadProxies() {
+  const path = config.paths?.proxiesFile || 'user_data/proxies/proxies.txt';
+  const res = await window.api.readLinesFile(path);
+  $('proxy-textarea').value = res.ok ? res.lines.join('\n') : '';
+  updateProxiesCount(res.ok ? res.lines.length : 0);
+}
+
+function updateProxiesCount(n) {
+  $('proxies-count').textContent = n ? `${n} прокси` : 'нет прокси';
+}
+
+$('btn-save-keys').addEventListener('click', async () => {
+  const newKeys = $('new-key-input').value.split('\n').map((k) => k.trim()).filter(Boolean);
+  const keys = [...collectKeys(), ...newKeys];
+  const path = config.paths?.privatekeysFile || 'user_data/privatekeys/privatekeys.txt';
+  const res = await window.api.saveLinesFile(path, keys);
+  if (res.ok) {
+    $('new-key-input').value = '';
+    renderKeyList(keys);
+    alert(`Сохранено ${keys.length} ключей.`);
+  } else {
+    alert(`Ошибка: ${res.error}`);
+  }
+});
+
+$('btn-reload-keys').addEventListener('click', loadKeys);
+
+$('btn-save-proxies').addEventListener('click', async () => {
+  const lines = $('proxy-textarea').value.split('\n').map((l) => l.trim()).filter(Boolean);
+  const path = config.paths?.proxiesFile || 'user_data/proxies/proxies.txt';
+  const res = await window.api.saveLinesFile(path, lines);
+  if (res.ok) { updateProxiesCount(lines.length); alert(`Сохранено ${lines.length} прокси.`); }
+  else alert(`Ошибка: ${res.error}`);
+});
+
+$('btn-reload-proxies').addEventListener('click', loadProxies);
+
+$('proxy-textarea').addEventListener('input', () => {
+  const n = $('proxy-textarea').value.split('\n').map((l) => l.trim()).filter(Boolean).length;
+  updateProxiesCount(n);
+});
+
 // ── Init ───────────────────────────────────────────────────────────────────────
 (async () => {
   const cfg = await window.api.getSettings();
   loadSettingsToForm(cfg);
+  loadKeys();
+  loadProxies();
 })();

@@ -23,6 +23,10 @@ contextBridge.exposeInMainWorld('api', {
   openFile: (options) => ipcRenderer.invoke('open-file', options),
   showDialog: (options) => ipcRenderer.invoke('show-dialog', options),
 
+  // Account files (private keys / proxies)
+  readLinesFile: (filePath) => ipcRenderer.invoke('read-lines-file', filePath),
+  saveLinesFile: (filePath, lines) => ipcRenderer.invoke('save-lines-file', filePath, lines),
+
   // Events from main process
   onLog: (callback) => ipcRenderer.on('log', (event, data) => callback(data)),
   onTradingDone: (callback) => ipcRenderer.on('trading-done', (event, data) => callback(data)),

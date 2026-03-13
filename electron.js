@@ -8,6 +8,7 @@
 
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const EventEmitter = require('events');
 
 const logger = require('./src/utils/logger');
@@ -175,4 +176,30 @@ ipcMain.handle('open-file', async (event, options) => {
 /** Show message dialog */
 ipcMain.handle('show-dialog', async (event, options) => {
   return await dialog.showMessageBox(mainWindow, options);
+});
+
+/** Read lines from a file (private keys / proxies) */
+ipcMain.handle('read-lines-file', (_event, filePath) => {
+  try {
+    const abs = settings.resolvePath(filePath);
+    if (!fs.existsSync(abs)) return { ok: true, lines: [] };
+    const lines = fs.readFileSync(abs, 'utf-8')
+      .split('\n').map((l) => l.trim()).filter(Boolean);
+    return { ok: true, lines };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+/** Save lines to a file (private keys / proxies) */
+ipcMain.handle('save-lines-file', (_event, filePath, lines) => {
+  try {
+    const abs = settings.resolvePath(filePath);
+    const dir = path.dirname(abs);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(abs, lines.filter((l) => l.trim()).join('\n') + '\n');
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 });

@@ -23,6 +23,9 @@
       <li class="nav-item" data-page="tokens">
         <span class="nav-icon">🪙</span> Токены
       </li>
+      <li class="nav-item" data-page="accounts">
+        <span class="nav-icon">🔑</span> Аккаунты
+      </li>
       <li class="nav-item" data-page="settings">
         <span class="nav-icon">⚙️</span> Настройки
       </li>
@@ -113,6 +116,36 @@
 
       <div class="btn-group">
         <button class="btn btn-primary" id="btn-save-tokens">💾 Сохранить токены</button>
+      </div>
+    </section>
+
+    <!-- ── Accounts ──────────────────────────────────────────────────────── -->
+    <section class="page" id="page-accounts">
+      <h2>Аккаунты</h2>
+
+      <!-- Private keys -->
+      <div class="card">
+        <div class="card-title">Приватные ключи</div>
+        <p class="card-hint">Один ключ на строку. Начинаются с <code>0x</code>. Хранятся локально.</p>
+        <div class="key-list" id="key-list"></div>
+        <textarea id="new-key-input" class="proxy-textarea" placeholder="Вставьте новые ключи сюда (каждый с новой строки) и нажмите Сохранить" autocomplete="off" spellcheck="false" style="height:80px;margin-top:8px"></textarea>
+        <div class="btn-group" style="margin-top:14px">
+          <button class="btn btn-primary" id="btn-save-keys">💾 Сохранить ключи</button>
+          <button class="btn btn-secondary" id="btn-reload-keys">↺ Обновить из файла</button>
+          <span class="accounts-count" id="keys-count"></span>
+        </div>
+      </div>
+
+      <!-- Proxies -->
+      <div class="card">
+        <div class="card-title">Прокси</div>
+        <p class="card-hint">Один прокси на строку. Формат: <code>http://user:pass@host:port</code> или <code>host:port</code></p>
+        <textarea id="proxy-textarea" class="proxy-textarea" placeholder="http://user:pass@1.2.3.4:8080&#10;socks5://user:pass@1.2.3.4:1080&#10;1.2.3.4:8080" spellcheck="false"></textarea>
+        <div class="btn-group" style="margin-top:10px">
+          <button class="btn btn-primary" id="btn-save-proxies">💾 Сохранить прокси</button>
+          <button class="btn btn-secondary" id="btn-reload-proxies">↺ Обновить из файла</button>
+          <span class="accounts-count" id="proxies-count"></span>
+        </div>
       </div>
     </section>
 
