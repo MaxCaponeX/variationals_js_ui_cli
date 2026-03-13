@@ -24,7 +24,7 @@ function sleep(ms) {
   });
 }
 
-/** Async sleep for `seconds` seconds, with a countdown log every 30s */
+/** Async sleep for `seconds` seconds, with a periodic countdown */
 async function asyncSleep(seconds, label = null) {
   stopSignal.check();
   const prefix = label ? `${label} | ` : '';
@@ -34,8 +34,15 @@ async function asyncSleep(seconds, label = null) {
     logger.debug(`${prefix}Sleeping ${seconds}s...`);
   }
 
-  const interval = 30;
+  const interval = seconds > 60 ? 30 : 10;
   let remaining = seconds;
+
+  // First update always after 10s so user sees activity quickly
+  if (remaining > 10) {
+    await sleep(10 * 1000);
+    remaining -= 10;
+    logger.debug(`${prefix}Ещё ${remaining}s...`);
+  }
 
   while (remaining > interval) {
     await sleep(interval * 1000);
