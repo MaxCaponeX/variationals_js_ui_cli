@@ -117,10 +117,10 @@ ipcMain.handle('get-db-status', () => {
 });
 
 /** Create database */
-ipcMain.handle('create-database', async (event, mode) => {
+ipcMain.handle('create-database', async (event, mode, password) => {
   try {
     db = new DataBase();
-    await db.setPassword();
+    await db.setPassword(password !== undefined ? password : null);
     await db.createModules(mode);
     return { ok: true };
   } catch (err) {

@@ -139,8 +139,8 @@
       <!-- Proxies -->
       <div class="card">
         <div class="card-title">Прокси</div>
-        <p class="card-hint">Один прокси на строку. Формат: <code>http://user:pass@host:port</code> или <code>host:port</code></p>
-        <textarea id="proxy-textarea" class="proxy-textarea" placeholder="http://user:pass@1.2.3.4:8080&#10;socks5://user:pass@1.2.3.4:1080&#10;1.2.3.4:8080" spellcheck="false"></textarea>
+        <p class="card-hint">Один прокси на строку. Только <code>http://</code> прокси. Формат: <code>http://user:pass@host:port</code> или <code>host:port</code></p>
+        <textarea id="proxy-textarea" class="proxy-textarea" placeholder="http://user:pass@1.2.3.4:8080&#10;http://1.2.3.4:8080&#10;1.2.3.4:8080" spellcheck="false"></textarea>
         <div class="btn-group" style="margin-top:10px">
           <button class="btn btn-primary" id="btn-save-proxies">💾 Сохранить прокси</button>
           <button class="btn btn-secondary" id="btn-reload-proxies">↺ Обновить из файла</button>
@@ -562,6 +562,21 @@
 
   </main>
 </div>
+
+<!-- ── Password dialog ──────────────────────────────────────────────────── -->
+<dialog id="dialog-db-password">
+  <form method="dialog" class="db-password-form">
+    <div class="card-title" style="margin-bottom:12px">Пароль шифрования БД</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px">
+      Используется для шифрования приватных ключей. Оставьте пустым — будет применён пароль по умолчанию.
+    </p>
+    <input type="password" id="db-password-input" placeholder="Пароль (Enter = по умолчанию)" autocomplete="off" style="width:100%;margin-bottom:14px">
+    <div class="btn-group">
+      <button class="btn btn-primary" value="confirm">Продолжить</button>
+      <button class="btn btn-secondary" value="cancel">Отмена</button>
+    </div>
+  </form>
+</dialog>
 
 <script src="renderer.js"></script>
 <script>

@@ -124,6 +124,18 @@ async function refreshDbStatus() {
   }
 }
 
+function askDbPassword() {
+  return new Promise((resolve) => {
+    const dlg = $('dialog-db-password');
+    $('db-password-input').value = '';
+    dlg.showModal();
+    dlg.addEventListener('close', function handler() {
+      dlg.removeEventListener('close', handler);
+      resolve(dlg.returnValue === 'confirm' ? $('db-password-input').value : null);
+    });
+  });
+}
+
 async function createDb(mode) {
   const confirm = await window.api.showDialog({
     type: 'question',
@@ -134,7 +146,10 @@ async function createDb(mode) {
   });
   if (confirm.response !== 1) return;
 
-  const result = await window.api.createDatabase(mode);
+  const password = await askDbPassword();
+  if (password === null) return; // пользователь нажал Отмена
+
+  const result = await window.api.createDatabase(mode, password);
   if (result.ok) {
     await refreshDbStatus();
     appendLog({ level: 'SUCCESS', message: '[+] База данных успешно создана', time: new Date().toISOString() }, dashLog);
@@ -425,7 +440,13 @@ function renderKeyList(lines) {
     delBtn.className = 'btn-remove';
     delBtn.title = 'Удалить';
     delBtn.textContent = '✕';
-    delBtn.addEventListener('click', () => row.remove());
+    delBtn.addEventListener('click', async () => {
+      row.remove();
+      updateKeysCount();
+      const keys = collectKeys();
+      const filePath = config.paths?.privatekeysFile || 'user_data/privatekeys/privatekeys.txt';
+      await window.api.saveLinesFile(filePath, keys);
+    });
 
     row.append(input, eyeBtn, delBtn);
     list.appendChild(row);

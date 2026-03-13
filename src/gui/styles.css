@@ -242,6 +242,19 @@ input[type="checkbox"]:checked::after {
 .badge-done    { background: #14532d; color: var(--green); }
 .badge-error   { background: #7f1d1d; color: var(--red); }
 
+/* ── Modal dialog ────────────────────────────────────────────────────────────── */
+dialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  width: 380px;
+  color: var(--text-primary);
+  box-shadow: 0 8px 32px rgba(0,0,0,.6);
+}
+dialog::backdrop { background: rgba(0,0,0,.55); }
+.db-password-form input { width: 100%; }
+
 /* ── Log console ─────────────────────────────────────────────────────────────── */
 .log-console {
   background: #0a0d12;

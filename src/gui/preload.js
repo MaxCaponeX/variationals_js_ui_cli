@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // Database
   getDbStatus: () => ipcRenderer.invoke('get-db-status'),
-  createDatabase: (mode) => ipcRenderer.invoke('create-database', mode),
+  createDatabase: (mode, password) => ipcRenderer.invoke('create-database', mode, password),
 
   // Trading
   startTrading: (mode) => ipcRenderer.invoke('start-trading', mode),

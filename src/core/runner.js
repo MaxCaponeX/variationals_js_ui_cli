@@ -119,7 +119,7 @@ async function threadSleep(label, sleepHistory, threads, betweenThreads) {
     const toSleep = sleepHistory[sleepHistory.length - 1];
     if (toSleep) {
       logger.debug(`[•] ${label} | Sleep ${toSleep}s before start...`);
-      await asyncSleep(toSleep);
+      await asyncSleep(toSleep, label);
     }
   }
 }

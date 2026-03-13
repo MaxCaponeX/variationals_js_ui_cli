@@ -57,10 +57,15 @@ function timestamp() {
   return chalk.gray(`${h}:${m}:${s}`);
 }
 
+// Strip leading [•], [+], [-], [!] prefixes already baked into message strings
+function stripLeadingIcon(msg) {
+  return msg.replace(/^\[[-•+!]\]\s*/, '');
+}
+
 function log(level, message) {
   const icon = ICONS[level] || ICONS.INFO;
   const colorFn = COLORS[level] || COLORS.INFO;
-  const rendered = renderTags(message);
+  const rendered = renderTags(stripLeadingIcon(message));
   console.log(`${timestamp()} | [${icon}] ${colorFn(rendered)}`);
 
   // Push to GUI if IPC emitter is set

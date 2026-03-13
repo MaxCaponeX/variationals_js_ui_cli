@@ -2,6 +2,9 @@
 user_data/privatekeys/
 user_data/proxies/
 
+# Конфиг содержит токены и ID — не коммитить
+config.json
+
 # Базы данных
 databases/
 

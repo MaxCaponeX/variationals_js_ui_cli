@@ -2,16 +2,12 @@
 /**
  * HTTP client for the Variational API (omni.variational.io).
  *
- * Uses axios with a persistent cookie jar to simulate a browser session.
- * Retry logic is handled at a higher level (variational.js).
+ * Uses electron.net — Chromium's real network stack — for authentic Chrome
+ * TLS fingerprint, HTTP/2, and per-account isolated cookie sessions.
+ * Proxy is set per-session via Chromium's built-in proxy resolver.
  */
 
-const axios = require('axios');
-const { wrapper } = require('axios-cookiejar-support');
-const { CookieJar } = require('tough-cookie');
-
-const logger = require('../utils/logger');
-const settings = require('./settings');
+const { net, session } = require('electron');
 
 const BASE_URL = 'https://omni.variational.io';
 
@@ -42,66 +38,110 @@ class Browser {
       this.proxy = null;
     }
 
-    this._jar = new CookieJar();
-    this._client = this._createClient();
-  }
+    // Each account gets its own isolated Chromium session (cookies, cache)
+    this._sess = session.fromPartition(`account-${address}`, { cache: false });
 
-  _createClient() {
-    const axiosInstance = wrapper(axios.create({
-      baseURL: BASE_URL,
-      headers: DEFAULT_HEADERS,
-      timeout: 30000,
-      withCredentials: true,
-      jar: this._jar,
-    }));
-
+    // Parse proxy credentials separately — Chromium proxyRules doesn't accept auth inline
+    this._proxyAuth = null;
+    let proxyRules = null;
     if (this.proxy) {
-      // Parse proxy URL for axios config
       try {
-        const url = new URL(this.proxy);
-        axiosInstance.defaults.proxy = {
-          protocol: url.protocol.replace(':', ''),
-          host: url.hostname,
-          port: parseInt(url.port),
-          auth: url.username ? { username: url.username, password: url.password } : undefined,
-        };
-      } catch (_) {
-        logger.warning(`Invalid proxy URL: ${this.proxy}`);
-      }
+        const u = new URL(this.proxy);
+        proxyRules = `${u.protocol}//${u.hostname}:${u.port}`;
+        if (u.username) {
+          this._proxyAuth = {
+            username: decodeURIComponent(u.username),
+            password: decodeURIComponent(u.password),
+          };
+        }
+      } catch (_) { proxyRules = this.proxy; }
     }
 
-    return axiosInstance;
+    // Clear cookies from any previous run, then set proxy
+    this._ready = this._sess
+      .clearStorageData({ storages: ['cookies'] })
+      .then(() => proxyRules
+        ? this._sess.setProxy({ proxyRules })
+        : Promise.resolve()
+      );
   }
 
-  async _request(method, url, options = {}) {
-    try {
-      const response = await this._client.request({
+  _buildUrl(path, params) {
+    const url = new URL(path.startsWith('http') ? path : BASE_URL + path);
+    if (params) {
+      for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
+    }
+    return url.toString();
+  }
+
+  async _request(method, path, options = {}) {
+    await this._ready;
+
+    const url = this._buildUrl(path, options.params);
+
+    return new Promise((resolve, reject) => {
+      const request = net.request({
         method: method.toUpperCase(),
         url,
-        ...options,
+        session: this._sess,
+        useSessionCookies: true,
       });
-      return response;
-    } catch (err) {
-      if (err.response) {
-        // Check for Cloudflare rate limit in HTML response
-        const text = err.response.data;
-        if (typeof text === 'string') {
-          const match = text.match(/<title>.*?(\d+(?:\.\d+)?)\s*(ms|seconds).*?<\/title>/is);
-          if (match) {
-            const amount = parseFloat(match[1]);
-            const unit = match[2];
-            const sleepSec = unit === 'ms' ? Math.ceil(amount / 1000) + 1 : Math.ceil(amount) + 1;
-            const cf_err = new Error(`Cloudflare rate limit — sleep ${sleepSec}s`);
-            cf_err.cloudflare = true;
-            cf_err.toSleep = sleepSec;
-            throw cf_err;
+
+      for (const [k, v] of Object.entries(DEFAULT_HEADERS)) request.setHeader(k, v);
+      for (const [k, v] of Object.entries(options.headers || {})) request.setHeader(k, v);
+
+      request.on('response', (response) => {
+        const chunks = [];
+        response.on('data', (c) => chunks.push(c));
+        response.on('end', () => {
+          const raw = Buffer.concat(chunks).toString('utf-8');
+          let data;
+          try { data = JSON.parse(raw); } catch { data = raw; }
+
+          const status = response.statusCode;
+
+          if (status >= 200 && status < 300) {
+            resolve({ status, data, headers: response.headers });
+            return;
           }
-        }
-        const errData = err.response.data;
-        throw new Error(`HTTP ${err.response.status}: ${JSON.stringify(errData).slice(0, 300)}`);
+
+          // Cloudflare: explicit wait time in <title>
+          if (typeof data === 'string') {
+            const match = data.match(/<title>.*?(\d+(?:\.\d+)?)\s*(ms|seconds).*?<\/title>/is);
+            if (match) {
+              const amount = parseFloat(match[1]);
+              const sleepSec = match[2] === 'ms' ? Math.ceil(amount / 1000) + 1 : Math.ceil(amount) + 1;
+              const err = new Error(`Cloudflare rate limit — sleep ${sleepSec}s`);
+              err.cloudflare = true;
+              err.toSleep = sleepSec;
+              return reject(err);
+            }
+            if (data.includes('Just a moment') || data.includes('cf-browser-verification') || data.includes('_cf_chl_')) {
+              return reject(new Error(`HTTP ${status}: Cloudflare bot protection triggered — используйте прокси`));
+            }
+          }
+
+          reject(new Error(`HTTP ${status}: ${JSON.stringify(data).slice(0, 300)}`));
+        });
+        response.on('error', reject);
+      });
+
+      request.on('error', reject);
+
+      // Provide proxy credentials when Chromium challenges for auth
+      if (this._proxyAuth) {
+        request.on('login', (_authInfo, callback) => {
+          callback(this._proxyAuth.username, this._proxyAuth.password);
+        });
       }
-      throw err;
-    }
+
+      if (options.data) {
+        request.setHeader('Content-Type', 'application/json');
+        request.write(JSON.stringify(options.data));
+      }
+
+      request.end();
+    });
   }
 
   // ── Auth ─────────────────────────────────────────────────────────────────────

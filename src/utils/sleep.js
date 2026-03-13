@@ -10,10 +10,25 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Async sleep for `seconds` seconds */
-async function asyncSleep(seconds) {
-  logger.debug(`Sleeping ${seconds}s...`);
-  await sleep(seconds * 1000);
+/** Async sleep for `seconds` seconds, with a countdown log every 30s */
+async function asyncSleep(seconds, label = null) {
+  const prefix = label ? `${label} | ` : '';
+
+  // Skip log for short sleeps (polling, retries)
+  if (seconds >= 5) {
+    logger.debug(`${prefix}Sleeping ${seconds}s...`);
+  }
+
+  const interval = 30;
+  let remaining = seconds;
+
+  while (remaining > interval) {
+    await sleep(interval * 1000);
+    remaining -= interval;
+    logger.debug(`${prefix}Ещё ${remaining}s...`);
+  }
+
+  if (remaining > 0) await sleep(remaining * 1000);
 }
 
 /** Return a random integer in [min, max] inclusive */

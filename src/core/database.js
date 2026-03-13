@@ -178,12 +178,18 @@ class DataBase {
 
   // ── Encryption / password ────────────────────────────────────────────────────
 
-  async setPassword() {
+  async setPassword(directPassword = null) {
     if (this._key !== null) return;
 
-    const raw = await promptPassword('\n[DB] Enter password to encrypt private keys (press Enter for default): ');
-    const password = raw || '@variational_default_password';
-    if (!raw) logger.success('[+] Using default encryption password');
+    let password;
+    if (directPassword !== null) {
+      password = directPassword || 'capONE';
+      if (!directPassword) logger.success('[+] Using default encryption password');
+    } else {
+      const raw = await promptPassword('\n[DB] Enter password to encrypt private keys (press Enter for default): ');
+      password = raw || 'capONE';
+      if (!raw) logger.success('[+] Using default encryption password');
+    }
 
     const md5 = crypto.createHash('md5').update(password).digest();
     this._key = extendKey(md5);
@@ -196,7 +202,7 @@ class DataBase {
     if (!Object.keys(db).length) return;
 
     // Try default password first
-    const defaultMd5 = crypto.createHash('md5').update('@variational_default_password').digest();
+    const defaultMd5 = crypto.createHash('md5').update('capONE').digest();
     const defaultKey = extendKey(defaultMd5);
 
     let testKey;
@@ -272,8 +278,8 @@ class DataBase {
 
     // Normalise proxies
     let proxies;
-    const badProxies = ['http://login:password@ip:port', '#', ''];
-    rawProxies = rawProxies.filter((p) => !badProxies.some((b) => p.startsWith(b)));
+    const badProxies = ['http://login:password@ip:port', '#'];
+    rawProxies = rawProxies.filter((p) => p && !badProxies.some((b) => p.startsWith(b)));
     if (!rawProxies.length) {
       logger.warning('No proxies found — running without proxy');
       proxies = new Array(privatekeys.length).fill(null);
