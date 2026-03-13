@@ -8,6 +8,7 @@
  */
 
 const { net, session } = require('electron');
+const stopSignal = require('../utils/stopSignal');
 
 const BASE_URL = 'https://omni.variational.io';
 
@@ -75,6 +76,7 @@ class Browser {
   }
 
   async _request(method, path, options = {}) {
+    stopSignal.check();
     await this._ready;
 
     const url = this._buildUrl(path, options.params);

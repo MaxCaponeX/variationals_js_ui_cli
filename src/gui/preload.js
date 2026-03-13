@@ -16,7 +16,7 @@ contextBridge.exposeInMainWorld('api', {
   createDatabase: (mode, password) => ipcRenderer.invoke('create-database', mode, password),
 
   // Trading
-  startTrading: (mode) => ipcRenderer.invoke('start-trading', mode),
+  startTrading: (mode, password) => ipcRenderer.invoke('start-trading', mode, password),
   stopTrading: () => ipcRenderer.invoke('stop-trading'),
 
   // Dialogs

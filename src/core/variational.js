@@ -10,6 +10,7 @@ const logger = require('../utils/logger');
 const { asyncSleep, randint, uniform, choice } = require('../utils/sleep');
 const settings = require('./settings');
 const { getAllTokens, addRuntimeToken, hasToken, getToken } = require('./config');
+const TgReport = require('../utils/tgReport');
 
 // ── Errors ────────────────────────────────────────────────────────────────────
 
@@ -541,6 +542,7 @@ class Variational {
       `${this.prefix}${orderType} ${actionName.toLowerCase()} ${qty} ${tokenName} (${filledUsd}$) at ${filledPrice}`,
       true,
     );
+
     return fillResult;
   }
 

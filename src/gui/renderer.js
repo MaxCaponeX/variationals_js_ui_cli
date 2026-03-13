@@ -91,8 +91,10 @@ function setRunning(state) {
 
 async function startMode(mode) {
   if (isRunning) return;
+  const password = await askDbPassword();
+  if (password === null) return;
   setRunning(true);
-  const result = await window.api.startTrading(mode);
+  const result = await window.api.startTrading(mode, password);
   if (!result.ok) {
     setRunning(false);
     alert(`Ошибка запуска: ${result.error}`);

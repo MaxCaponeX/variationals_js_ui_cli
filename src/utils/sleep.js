@@ -4,14 +4,29 @@
  */
 
 const logger = require('./logger');
+const stopSignal = require('./stopSignal');
 
-/** Async sleep for `ms` milliseconds */
+/** Async sleep for `ms` milliseconds, interruptible by stopSignal */
 function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    // Poll stop flag every 200ms during sleep
+    const poll = setInterval(() => {
+      if (stopSignal.isSet()) {
+        clearTimeout(timer);
+        clearInterval(poll);
+        reject(new stopSignal.StopError());
+      }
+    }, 200);
+    // Clean up poll when sleep resolves normally
+    const orig = resolve;
+    setTimeout(() => clearInterval(poll), ms + 50);
+  });
 }
 
 /** Async sleep for `seconds` seconds, with a countdown log every 30s */
 async function asyncSleep(seconds, label = null) {
+  stopSignal.check();
   const prefix = label ? `${label} | ` : '';
 
   // Skip log for short sleeps (polling, retries)

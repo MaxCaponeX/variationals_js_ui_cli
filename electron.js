@@ -15,6 +15,7 @@ const logger = require('./src/utils/logger');
 const settings = require('./src/core/settings');
 const DataBase = require('./src/core/database');
 const { runner } = require('./src/core/runner');
+const stopSignal = require('./src/utils/stopSignal');
 
 // ── Log IPC bridge ─────────────────────────────────────────────────────────────
 
@@ -130,13 +131,14 @@ ipcMain.handle('create-database', async (event, mode, password) => {
 });
 
 /** Start trading */
-ipcMain.handle('start-trading', async (event, mode) => {
+ipcMain.handle('start-trading', async (event, mode, password) => {
   if (isRunning) return { ok: false, error: 'Already running' };
   isRunning = true;
+  stopSignal.reset();
 
   try {
-    const d = getOrCreateDb();
-    await d.getPassword();
+    const d = new DataBase();
+    await d.setPassword(password !== undefined ? password : null);
 
     // Run in background (don't await — send progress events)
     runner({ mode, db: d }).then((result) => {
@@ -146,9 +148,11 @@ ipcMain.handle('start-trading', async (event, mode) => {
       }
     }).catch((err) => {
       isRunning = false;
-      logger.error(`[-] Runner error: ${err.message}`);
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('trading-error', { error: err.message });
+      if (err.name !== 'StopError') {
+        logger.error(`[-] Runner error: ${err.message}`);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('trading-error', { error: err.message });
+        }
       }
     });
 
@@ -159,11 +163,11 @@ ipcMain.handle('start-trading', async (event, mode) => {
   }
 });
 
-/** Stop trading (graceful) */
+/** Stop trading — immediate */
 ipcMain.handle('stop-trading', () => {
-  // The runner checks a flag — future enhancement
+  stopSignal.request();
   isRunning = false;
-  logger.warning('[!] Stop requested — will stop after current task completes');
+  logger.warning('Остановка — прерывание всех операций...');
   return { ok: true };
 });
 

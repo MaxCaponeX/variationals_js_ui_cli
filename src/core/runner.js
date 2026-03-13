@@ -15,6 +15,7 @@ const Wallet = require('./wallet');
 const { Variational } = require('./variational');
 const PairAccounts = require('./pairAccounts');
 const TgReport = require('../utils/tgReport');
+const stopSignal = require('../utils/stopSignal');
 
 // ── Concurrency helpers ────────────────────────────────────────────────────────
 
@@ -143,6 +144,7 @@ async function runModules({ mode, moduleData, sem, sleepHistory, addressLocks, d
         moduleData.module_info.status = await variational.run(mode);
 
       } catch (err) {
+        if (err.name === 'StopError') throw err;
         logger.error(`[-] Soft | ${moduleData.address} | Global error: ${err.message}`);
         await db.appendReport(moduleData.encoded_privatekey, String(err.message), false);
 
@@ -197,6 +199,7 @@ async function runPair({ mode, groupData, sem, sleepHistory, db }) {
         }).run();
 
       } catch (err) {
+        if (err.name === 'StopError') throw err;
         logger.error(`[-] Group ${groupData.group_number} | Global error: ${err.message}`);
         await db.appendReport(groupData.group_index, String(err.message), false);
 

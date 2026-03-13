@@ -12,6 +12,7 @@ const { asyncSleep, randint, uniform, choice, shuffle } = require('../utils/slee
 const settings = require('./settings');
 const { getToken } = require('./config');
 const { roundCut } = require('./variational');
+const TgReport = require('../utils/tgReport');
 
 class PairAccounts {
   constructor({ accounts, groupData }) {
@@ -147,6 +148,21 @@ class PairAccounts {
       for (const acc of this._randomized(this.accounts)) await acc.sellAll();
       return false;
     }
+
+    // Уведомление об открытых позициях
+    const allWithData = [
+      ...marketAccounts.map((acc, i) => ({ acc, pos: openedPositions[i], av: openValues[acc.wallet.address] })),
+      ...(limitAccount && limitOpenData ? [{ acc: limitAccount, pos: limitOpenData, av: openValues[limitAccount.wallet.address] }] : []),
+    ];
+    const tgLines = [`📂 <b>${this.groupNumber} | Позиции открыты</b>`, `🪙 ${tokenName}\n`];
+    for (const { acc, pos, av } of allWithData) {
+      const price = parseFloat(pos.price);
+      const qty = parseFloat(pos.qty);
+      const usd = roundCut(qty * price, 2);
+      const emoji = av.side === 'Long' ? '🟢' : '🔴';
+      tgLines.push(`${emoji} ${av.side} | <code>${acc.wallet.address}</code>\n   ${qty} ${tokenName} (${usd}$) @ ${price}`);
+    }
+    await new TgReport().sendLog(tgLines.join('\n'));
 
     // Hold period + liquidation watch
     const holdSec = randint(...cfg.trading.pairSettings.positionHold);
