@@ -171,7 +171,9 @@ async function runModules({ mode, moduleData, sem, sleepHistory, addressLocks, d
           mode,
         });
         if (reports) await new TgReport().sendLog(reports);
-        await asyncSleep(randint(...cfg.sleep.afterAccount));
+        if (mode !== 5) {
+          await asyncSleep(randint(...cfg.sleep.afterAccount), moduleData.label);
+        }
       }
     });
   } finally {

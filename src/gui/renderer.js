@@ -66,9 +66,10 @@ window.api.onLog((entry) => {
 $('btn-clear-logs').addEventListener('click', () => { fullLog.innerHTML = ''; dashLog.innerHTML = ''; });
 
 // ── Trading callbacks ──────────────────────────────────────────────────────────
-window.api.onTradingDone(({ result }) => {
+window.api.onTradingDone(({ result, mode }) => {
   setRunning(false);
-  appendLog({ level: 'SUCCESS', message: `[+] Торговля завершена: ${result}`, time: new Date().toISOString() }, dashLog);
+  const doneMsg = mode === 5 ? 'Парсинг завершён' : mode === 3 ? 'Закрытие позиций завершено' : 'Торговля завершена';
+  appendLog({ level: 'SUCCESS', message: `[+] ${doneMsg}`, time: new Date().toISOString() }, dashLog);
   refreshDbStatus();
 });
 window.api.onTradingError(({ error }) => {

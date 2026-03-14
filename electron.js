@@ -144,7 +144,7 @@ ipcMain.handle('start-trading', async (event, mode, password) => {
     runner({ mode, db: d }).then((result) => {
       isRunning = false;
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('trading-done', { result });
+        mainWindow.webContents.send('trading-done', { result, mode });
       }
     }).catch((err) => {
       isRunning = false;

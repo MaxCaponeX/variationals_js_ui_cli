@@ -68,7 +68,7 @@ class Variational {
   // ── Entry points ────────────────────────────────────────────────────────────
 
   async run(mode) {
-    await this.loginAccount();
+    await this.loginAccount(mode);
 
     if (mode === 1) return await this.buySellPosition();
     if (mode === 3) { await this.sellAll(); return true; }
@@ -78,7 +78,7 @@ class Variational {
 
   // ── Auth ─────────────────────────────────────────────────────────────────────
 
-  async loginAccount() {
+  async loginAccount(mode = 1) {
     const cfg = settings.get();
     const maxRetries = cfg.general.retry;
     let attempt = 0;
@@ -104,7 +104,7 @@ class Variational {
           await asyncSleep(result.toSleep || 5);
         }
 
-        await this.loadTokensData();
+        await this.loadTokensData([3, 5].includes(mode));
         return;
 
       } catch (err) {
@@ -117,20 +117,20 @@ class Variational {
     }
   }
 
-  async loadTokensData() {
+  async loadTokensData(silent = false) {
     // Parse all supported assets from the API (done only once globally)
     if (!_parseLockPromise) {
-      _parseLockPromise = this._doParse();
+      _parseLockPromise = this._doParse(silent);
     }
     await _parseLockPromise;
   }
 
-  async _doParse() {
+  async _doParse(silent = false) {
     if (PARSED_FLAG) return;
 
     const cfg = settings.get();
     const configTokens = Object.keys(cfg.tokens);
-    this.log(`Loading ${configTokens.length} token configuration(s)...`);
+    if (!silent) this.log(`Loading ${configTokens.length} token configuration(s)...`);
 
     const supported = await this.browser.getSupportedAssets();
 
@@ -166,7 +166,7 @@ class Variational {
     }
 
     PARSED_FLAG = true;
-    this.log(`Loaded ${configTokens.length} token(s): ${configTokens.join(', ')}`, '+', 'SUCCESS');
+    if (!silent) this.log(`Loaded ${configTokens.length} token(s): ${configTokens.join(', ')}`, '+', 'SUCCESS');
   }
 
   // ── Price helpers ─────────────────────────────────────────────────────────────
