@@ -235,10 +235,7 @@ class Browser {
   }
 
   async cancelOrder(orderId) {
-    const resp = await this._request('POST', '/api/orders/cancel', { data: { rfq_id: orderId } });
-    if (resp.data !== null && resp.status !== 200) {
-      throw new Error(`Failed to cancel order: ${JSON.stringify(resp.data)}`);
-    }
+    await this._request('POST', '/api/orders/cancel', { data: { rfq_id: orderId } });
   }
 
   async getOrders(orderId = null, params = {}) {

@@ -532,7 +532,7 @@ class Variational {
 
     const { result: fillResult, params: fillParams } = await this._waitForLimitFilled({
       orderIds: orderIdsToWatch,
-      tokenName, qty: dependPrice, price: dependPrice, orderSide,
+      tokenName, qty, price: dependPrice, orderSide,
       isClose: !!previousPos, triggerStr, customPrice,
     });
 

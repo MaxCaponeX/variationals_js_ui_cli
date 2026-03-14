@@ -171,7 +171,7 @@ async function runModules({ mode, moduleData, sem, sleepHistory, addressLocks, d
           mode,
         });
         if (reports) await new TgReport().sendLog(reports);
-        if (mode !== 5) {
+        if (![3, 5].includes(mode)) {
           await asyncSleep(randint(...cfg.sleep.afterAccount), moduleData.label);
         }
       }
